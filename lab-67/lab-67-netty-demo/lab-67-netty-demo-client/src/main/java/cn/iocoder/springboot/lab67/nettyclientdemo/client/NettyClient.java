@@ -1,11 +1,14 @@
 package cn.iocoder.springboot.lab67.nettyclientdemo.client;
 
 import cn.iocoder.springboot.lab67.nettyclientdemo.client.handler.NettyClientHandlerInitializer;
+import cn.iocoder.springboot.lab67.nettyclientdemo.message.heartbeat.HeartbeatRequest;
 import cn.iocoder.springboot.lab67.nettycommondemo.codec.Invocation;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +74,16 @@ public class NettyClient {
                 // 连接成功
                 channel = future.channel();
                 logger.info("[start][Netty Client 连接服务器({}:{}) 成功]", serverHost, serverPort);
+
+
+                // 定时发送心跳消息
+                eventGroup.scheduleAtFixedRate(() -> {
+                            logger.info(" 定时发送消息 --------> {} ", System.currentTimeMillis());
+                            HeartbeatRequest heartbeatRequest = new HeartbeatRequest();
+                            channel.writeAndFlush(new Invocation(HeartbeatRequest.TYPE, heartbeatRequest))
+                                    .addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+                        },
+                        1L, 5L, TimeUnit.SECONDS);
             }
 
         });
@@ -120,6 +133,37 @@ public class NettyClient {
         }
         // 发送消息
         channel.writeAndFlush(invocation);
+    }
+
+
+    /**
+     * 发送消息
+     *
+     * @param invocation 消息体
+     * @param promise
+     */
+    public ChannelFuture sendAsync(Invocation invocation, ChannelPromise promise) {
+        if (channel == null) {
+            logger.error("[send][连接不存在]");
+            return null;
+        }
+        if (!channel.isActive()) {
+            logger.error("[send][连接({})未激活]", channel.id());
+            return null;
+        }
+        // 发送消息
+        ChannelFuture future = channel.writeAndFlush(invocation).addListener(future1 -> {
+            logger.info(" 发送 async 消息 ------- ");
+
+            Object object = future1.get();
+
+            if (object != null)
+                logger.info(" future1.get() ------- {} ", object.toString());
+
+
+        });
+
+        return future;
     }
 
 }

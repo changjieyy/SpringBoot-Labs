@@ -41,7 +41,7 @@ public class InvocationDecoder extends ByteToMessageDecoder {
         // 解析成 Invocation
         Invocation invocation = JSON.parseObject(content, Invocation.class);
         out.add(invocation);
-        logger.info("[decode][连接({}) 解析到一条消息({})]", ctx.channel().id(), invocation.toString());
+//        logger.info("[decode][连接({}) 解析到一条消息({})]", ctx.channel().id(), invocation.toString());
     }
 
 }
